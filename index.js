@@ -26,7 +26,7 @@ const client = new MongoClient(uri, {
 
 async function server() {
     try {
-        await client.connect();
+        // await client.connect();
 
         // ডেটাবেস এবং কালেকশন তৈরি
         const db = client.db("Azizul-studentPortal-DB");
@@ -34,10 +34,11 @@ async function server() {
 
         // ১. নতুন শিক্ষার্থীর তথ্য জমা নেওয়ার POST রুট (ভ্যালিডেশনসহ)
         app.post('/api/students', async (req, res) => {
-            const { name, regNumber } = req.body;
-            console.log("FrontEnd : ", name, regNumber)
+            const { name, regNumber, phnNumber } = req.body;
+            console.log("✅FrontEnd : ", name, regNumber, phnNumber)
+            // console.log("SERVER", req.body)
 
-            // এম্পটি সাবমিশন ডেটাবেস ভ্যালিডেশন
+            // Empty submission database validation
             if (!name || !name.trim() || !regNumber) {
                 return res.status(400).send({
                     success: false,
@@ -46,8 +47,9 @@ async function server() {
             }
 
             const regNumInt = parseInt(regNumber);
+            const phnNumberInt = parseInt(phnNumber);
 
-            // রেজিস্ট্রেশন নাম্বারটি ইতিমধ্যে ডাটাবেসে আছে কিনা তা যাচাই (Duplicate Validation)
+            // Registration number (Duplicate Validation)
             const isExist = await studentsCollection.findOne({ regNumber: regNumInt });
             if (isExist) {
                 return res.status(400).send({
@@ -56,21 +58,22 @@ async function server() {
                 });
             }
 
-            // নতুন ডেটা অবজেক্ট
+            // // নতুন ডেটা অবজেক্ট
             const newStudent = {
                 name: name.trim(),
-                regNumber: regNumInt
+                regNumber: regNumInt,
+                phnNumber: phnNumberInt
             };
 
             const result = await studentsCollection.insertOne(newStudent);
             res.send({
                 success: true,
-                message: "সফলভাবে রেজিস্ট্রেশন সম্পন্ন হয়েছে!",
+                message: "সফলভাবে ডাটাবেজে সংরক্ষণ হয়েছে!",
                 result
             });
         });
 
-        app.get('/api/students', async(req, res) => {
+        app.get('/api/data/students/info', async(req, res) => {
             const result = await studentsCollection.find().toArray()
             // console.log(result)
             res.send(result)
@@ -112,7 +115,7 @@ async function server() {
         });
 
 
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
