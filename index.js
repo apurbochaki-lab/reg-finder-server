@@ -9,7 +9,15 @@ const app = express()
 dotenv.config()
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+    origin: [
+        'https://azizulian-reg-finder-vercel.app', // আপনার লাইভ ফ্রন্টএন্ড ইউআরএল
+        'http://localhost:3000'                    // লোকালহোস্টে টেস্ট করার জন্য
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    credentials: true
+}));
+
 app.use(express.json())
 
 
@@ -73,12 +81,12 @@ async function server() {
             });
         });
 
-        app.get('/api/data/students/info', async(req, res) => {
+        app.get('/api/data/students/info', async (req, res) => {
             const result = await studentsCollection.find().toArray()
             // console.log(result)
             res.send(result)
         })
-        
+
 
         // ২. রেজিস্ট্রেশন নাম্বার দিয়ে সার্চ এবং আগের-পরের সিট বের করার GET রুট
         app.get('/api/search/:regNumber', async (req, res) => {
