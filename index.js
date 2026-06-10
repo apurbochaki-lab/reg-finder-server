@@ -88,7 +88,54 @@ async function server() {
         })
 
 
-        // ২. রেজিস্ট্রেশন নাম্বার দিয়ে সার্চ এবং আগের-পরের সিট বের করার GET রুট
+
+        // ২. V2 রেজিস্ট্রেশন নাম্বার দিয়ে সার্চ এবং আগের-পরের সিট বের করার GET রুট (Format & Bound Fixed)
+        // app.get('/api/search/:regNumber', async (req, res) => {
+        //     const targetReg = parseInt(req.params.regNumber);
+
+        //     if (isNaN(targetReg)) {
+        //         return res.status(400).send({ success: false, error: "সঠিক রেজিস্ট্রেশন নাম্বার দিন।" });
+        //     }
+
+        //     // মূল রেকর্ডটি খোঁজা (Current Seat)
+        //     const current = await studentsCollection.findOne({ regNumber: targetReg });
+
+        //     if (!current) {
+        //         return res.status(404).send({ success: false, error: "কোনো তথ্য পাওয়া যায়নি!" });
+        //     }
+
+        //     // টার্গেট নাম্বারের ডিজিট অনুযায়ী লিমিট বের করা (যাতে অন্য ফরম্যাটের বা বেশি ডিজিটের নাম্বার না আসে)
+        //     const numLength = String(targetReg).length;
+        //     const lowerBound = Math.pow(10, numLength - 1); // ১১ ডিজিট হলে: 10000000000
+        //     const upperBound = Math.pow(10, numLength) - 1; // ১১ ডিজিট হলে: 99999999999
+
+        //     // ঠিক আগের সিটের রেকর্ড (Previous Seat)
+        //     // শর্ত: টার্গেটের চেয়ে ছোট হতে হবে, কিন্তু একই ডিজিট ফরম্যাটের (lowerBound এর সমান বা বড়) হতে হবে
+        //     const previousArray = await studentsCollection.find({
+        //         regNumber: { $lt: targetReg, $gte: lowerBound }
+        //     })
+        //         .sort({ regNumber: -1 })
+        //         .limit(1)
+        //         .toArray();
+        //     const previous = previousArray.length > 0 ? previousArray[0] : null;
+
+        //     // ঠিক পরের সিটের রেকর্ড (Next Seat)
+        //     // শর্ত: টার্গেটের চেয়ে বড় হতে হবে, কিন্তু একই ডিজিট ফরম্যাটের (upperBound এর সমান বা ছোট) হতে হবে
+        //     const nextArray = await studentsCollection.find({
+        //         regNumber: { $gt: targetReg, $lte: upperBound }
+        //     })
+        //         .sort({ regNumber: 1 })
+        //         .limit(1)
+        //         .toArray();
+        //     const next = nextArray.length > 0 ? nextArray[0] : null;
+
+        //     // ফ্রন্টএন্ডে অবজেক্ট আকারে ডেটা পাঠানো
+        //     console.log({ previous, current, next })
+        //     res.send({ previous, current, next });
+        // });
+
+
+        // ২. V3 রেজিস্ট্রেশন নাম্বার দিয়ে সার্চ এবং আশেপাশের ৫টি সিট বের করার GET রুট (Strict & Fixed)
         app.get('/api/search/:regNumber', async (req, res) => {
             const targetReg = parseInt(req.params.regNumber);
 
@@ -100,28 +147,34 @@ async function server() {
             const current = await studentsCollection.findOne({ regNumber: targetReg });
 
             if (!current) {
-                return res.status(404).send({ success: false, error: "কোনো তথ্য পাওয়া যায়নি!" });
+                return res.status(404).send({ success: false, error: "কোনো তথ্য পাওয়া যায়নি!" });
             }
 
-            // ঠিক আগের সিটের রেকর্ড (Previous Seat)
-            // রেজিস্ট্রেশন নাম্বার ছোটোদের মধ্যে সবচেয়ে বড়টি ($lt এবং sort -1)
-            const previousArray = await studentsCollection.find({ regNumber: { $lt: targetReg } })
-                .sort({ regNumber: -1 })
-                .limit(1)
-                .toArray();
-            const previous = previousArray.length > 0 ? previousArray[0] : null;
+            // Promise.all ব্যবহার করে একসাথে বাকি ৪টি নির্দিষ্ট সিটের ডেটা কল করা (যাতে API রেসপন্স ফাস্ট হয়)
+            const [prevTwo, previous, next, nextTwo] = await Promise.all([
+                studentsCollection.findOne({ regNumber: targetReg - 2 }), // Previous এর আগের জন
+                studentsCollection.findOne({ regNumber: targetReg - 1 }), // Previous
+                studentsCollection.findOne({ regNumber: targetReg + 1 }), // Next
+                studentsCollection.findOne({ regNumber: targetReg + 2 })  // Next এর পরের জন
+            ]);
 
-            // ঠিক পরের সিটের রেকর্ড (Next Seat)
-            // রেজিস্ট্রেশন নাম্বার বড়দের মধ্যে সবচেয়ে ছোটটি ($gt এবং sort 1)
-            const nextArray = await studentsCollection.find({ regNumber: { $gt: targetReg } })
-                .sort({ regNumber: 1 })
-                .limit(1)
-                .toArray();
-            const next = nextArray.length > 0 ? nextArray[0] : null;
-
-            // ফ্রন্টএন্ডে অবজেক্ট আকারে ডেটা পাঠানো
-            res.send({ previous, current, next });
+            // ফ্রন্টএন্ডে অবজেক্ট আকারে ৫টি ডেটা পাঠানো
+            console.log({
+                prevTwo,   // Current - 2
+                previous,  // Current - 1
+                current,   // Current
+                next,      // Current + 1
+                nextTwo    // Current + 2
+            })
+            res.send({
+                prevTwo,   // Current - 2
+                previous,  // Current - 1
+                current,   // Current
+                next,      // Current + 1
+                nextTwo    // Current + 2
+            });
         });
+
 
 
         // await client.db("admin").command({ ping: 1 });
