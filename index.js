@@ -11,7 +11,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors({
     origin: [
-        'https://azizulian-reg-finder.vercel.app', // আপনার লাইভ ফ্রন্টএন্ড ইউআরএল
+        'https://azizulian-reg-finder.netlify.app', // আপনার লাইভ ফ্রন্টএন্ড ইউআরএল
         'http://localhost:3000'                    // লোকালহোস্টে টেস্ট করার জন্য
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
