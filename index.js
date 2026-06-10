@@ -78,6 +78,7 @@ async function server() {
             // console.log(result)
             res.send(result)
         })
+        
 
         // ২. রেজিস্ট্রেশন নাম্বার দিয়ে সার্চ এবং আগের-পরের সিট বের করার GET রুট
         app.get('/api/search/:regNumber', async (req, res) => {
